@@ -28,6 +28,19 @@ int main(int argc, char *argv[]) {
 
   while (isRunning) {
     SDL_Event event;
+    SDL_Renderer *renderer =
+        SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    // 1. Clear the screen (Set draw color to "Lifeboat Blue")
+    SDL_SetRenderDrawColor(renderer, 0, 105, 148, 255);
+    SDL_RenderClear(renderer);
+
+    // 2. Draw something (e.g., a white square)
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect rect = {640, 300, 50, 50}; // x, y, width, height
+    SDL_RenderFillRect(renderer, &rect);
+
+    // 3. Present the result (This is where the magic happens)
+    SDL_RenderPresent(renderer);
 
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
