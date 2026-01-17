@@ -2,3 +2,11 @@ cmake_minimum_required(VERSION 3.12)
 project(Lifeboat)
 
 add_executable(lifeboat src/main.c)
+
+find_package(SDL2 REQUIRED COMPONENTS SDL2)
+find_package(SDL2_image REQUIRED)
+
+target_link_libraries(lifeboat PRIVATE
+SDL2::SDL2
+SDL2_image::SDL2_image
+)
