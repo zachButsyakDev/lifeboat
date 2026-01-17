@@ -13,9 +13,9 @@ int main(int argc, char *argv[]) {
 
   SDL_Init(SDL_INIT_VIDEO);
 
-  window =
-      SDL_CreateWindow("Lifeboat", SDL_WINDOWPOS_UNDEFINED,
-                       SDL_WINDOWPOS_UNDEFINED, 1280, 720, SDL_WINDOW_SHOWN);
+  window = SDL_CreateWindow("Lifeboat", SDL_WINDOWPOS_UNDEFINED,
+                            SDL_WINDOWPOS_UNDEFINED, 960, 540,
+                            SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 
   if (window == NULL) {
     printf("SDL Could Not Be Initialized.\n");
@@ -24,20 +24,34 @@ int main(int argc, char *argv[]) {
     printf("SDL is initialized!\n");
   }
 
+  SDL_Renderer *renderer =
+      SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+  SDL_RenderSetLogicalSize(renderer, 1280, 720);
+
   bool isRunning = true;
 
+  SDL_Event event;
+
   while (isRunning) {
-    SDL_Event event;
-    SDL_Renderer *renderer =
-        SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     // 1. Clear the screen (Set draw color to "Lifeboat Blue")
     SDL_SetRenderDrawColor(renderer, 0, 105, 148, 255);
     SDL_RenderClear(renderer);
 
     // 2. Draw something (e.g., a white square)
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_Rect rect = {640, 300, 50, 50}; // x, y, width, height
-    SDL_RenderFillRect(renderer, &rect);
+    // Use your LOGICAL constants, not the dynamic window size
+    int logicalW = 1280;
+    int logicalH = 720;
+
+    SDL_Rect myRect;
+    myRect.w = 100;
+    myRect.h = 100;
+
+    // Math based on the FIXED logical scale
+    myRect.x = (logicalW - myRect.w) / 2; // Always 590
+    myRect.y = (logicalH - myRect.h) / 2; // Always 310
+
+    SDL_RenderFillRect(renderer, &myRect);
 
     // 3. Present the result (This is where the magic happens)
     SDL_RenderPresent(renderer);
