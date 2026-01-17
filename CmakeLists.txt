@@ -12,3 +12,10 @@ target_link_libraries(lifeboat PRIVATE
 SDL2::SDL2
 SDL2_image::SDL2_image
 )
+
+add_custom_command(TARGET lifeboat POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_SOURCE_DIR}/public"
+    "${CMAKE_BINARY_DIR}/public"
+    COMMENT "Copying assets to build directory..."
+)

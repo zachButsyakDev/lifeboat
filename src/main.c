@@ -1,6 +1,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_render.h>
+#include <SDL2/SDL_surface.h>
 #include <SDL2/SDL_video.h>
 #include <SDL2_image/SDL_image.h>
 #include <stdbool.h>
@@ -28,32 +30,47 @@ int main(int argc, char *argv[]) {
       SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
   SDL_RenderSetLogicalSize(renderer, 1280, 720);
 
-  bool isRunning = true;
+  int imgFlags = IMG_INIT_PNG;
+  int imgInitStatus = IMG_Init(imgFlags);
+
+  if ((imgInitStatus & imgFlags) != imgFlags) {
+    printf("SDL Image Format Not Available!");
+  }
+
+  SDL_Surface *image;
+  image = IMG_Load("../public/images/mm_logo.png");
+
+  if (!image) {
+    printf("Image not loaded!");
+    return 1;
+  }
+  // Store the original size
+  int imgW = image->w;
+  int imgH = image->h;
+
+  SDL_Texture *png = SDL_CreateTextureFromSurface(renderer, image);
+  SDL_FreeSurface(image);
 
   SDL_Event event;
 
+  bool isRunning = true;
+
   while (isRunning) {
-    // 1. Clear the screen (Set draw color to "Lifeboat Blue")
-    SDL_SetRenderDrawColor(renderer, 0, 105, 148, 255);
+    // 1. Clear the screen (Blue background)
     SDL_RenderClear(renderer);
 
-    // 2. Draw something (e.g., a white square)
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    // Use your LOGICAL constants, not the dynamic window size
-    int logicalW = 1280;
-    int logicalH = 720;
+    SDL_Rect logoRect;
+    float scale =
+        0.5f; // Adjust this to make the logo bigger or smaller (0.5 = 50% size)
 
-    SDL_Rect myRect;
-    myRect.w = 100;
-    myRect.h = 100;
+    logoRect.w = (int)(imgW * scale);
+    logoRect.h = (int)(imgH * scale);
 
-    // Math based on the FIXED logical scale
-    myRect.x = (logicalW - myRect.w) / 2; // Always 590
-    myRect.y = (logicalH - myRect.h) / 2; // Always 310
+    // Center it on your 1280x720 logical screen
+    logoRect.x = (1280 - logoRect.w) / 2;
+    logoRect.y = 50;
 
-    SDL_RenderFillRect(renderer, &myRect);
-
-    // 3. Present the result (This is where the magic happens)
+    SDL_RenderCopy(renderer, png, NULL, &logoRect);
     SDL_RenderPresent(renderer);
 
     while (SDL_PollEvent(&event)) {
