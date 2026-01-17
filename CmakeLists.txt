@@ -1,0 +1,4 @@
+cmake_minimum_required(VERSION 3.12)
+project(Lifeboat)
+
+add_executable(lifeboat src/main.c)
