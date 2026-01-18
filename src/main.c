@@ -7,7 +7,32 @@
 #include <SDL2_image/SDL_image.h>
 #include <stdbool.h>
 #include <stdio.h>
-// main function just handles sdl2, windows, runtime loop
+
+float scrollOffset = 0.0f;       // Where we are currently looking
+float targetScrollOffset = 0.0f; // Where we WANT to be (0, 1280, 2560...)
+float lerpSpeed = 0.1f;          // How fast it "slides" (0.1 is 10% per frame)
+
+enum GameEnum { OOT, MM, MK };
+
+struct game {
+  enum GameEnum game;
+  char logoDir[48];
+  char bgDir[48];
+  char installDir[48];
+  char romDir[48];
+  int logoWidth, logoHeight;
+  SDL_Texture *logo;
+  SDL_Texture *bg;
+};
+
+struct game games[3] = {
+    {OOT, "../public/images/oot_logo.png",
+     "../public/images/oot_bg_vignette.png", "/Applications/soh.app/", "Empty",
+     0, 0, 0, 0},
+    {MM, "../public/images/mm_logo.png", "../public/images/mm_bg.png",
+     "/Applications/2s2h.app/", "Empty", 0, 0, 0, 0},
+    {MK, "../public/images/mario_kart.png",
+     "../public/images/oot_bg_vignette.png", "Empty", "Empty", 0, 0, 0, 0}};
 
 int main(int argc, char *argv[]) {
 
@@ -37,40 +62,75 @@ int main(int argc, char *argv[]) {
     printf("SDL Image Format Not Available!");
   }
 
-  SDL_Surface *image;
-  image = IMG_Load("../public/images/mm_logo.png");
+  for (int i = 0; i < 3; i++) {
+    SDL_Surface *image;
+    SDL_Surface *bgImage;
+    image = IMG_Load(games[i].logoDir);
+    bgImage = IMG_Load(games[i].bgDir);
 
-  if (!image) {
-    printf("Image not loaded!");
-    return 1;
+    if (!image || !bgImage) {
+      printf("Image not loaded!");
+      return 1;
+    }
+    // Store the original size
+    games[i].logoWidth = image->w;
+    games[i].logoHeight = image->h;
+
+    games[i].logo = SDL_CreateTextureFromSurface(renderer, image);
+    games[i].bg = SDL_CreateTextureFromSurface(renderer, bgImage);
+    SDL_FreeSurface(image);
+    SDL_FreeSurface(bgImage);
   }
-  // Store the original size
-  int imgW = image->w;
-  int imgH = image->h;
-
-  SDL_Texture *png = SDL_CreateTextureFromSurface(renderer, image);
-  SDL_FreeSurface(image);
 
   SDL_Event event;
 
   bool isRunning = true;
 
+  int activeGame = 0;
+
   while (isRunning) {
-    // 1. Clear the screen (Blue background)
+    Uint32 time = SDL_GetTicks();
+    scrollOffset += (targetScrollOffset - scrollOffset) * lerpSpeed;
     SDL_RenderClear(renderer);
+    // --- DRAW BACKGROUNDS FIRST ---
+    for (int i = 0; i < 3; i++) {
+      SDL_Rect bgRect;
+      bgRect.w = 1280;
+      bgRect.h = 720;
+      // Backgrounds move at the exact same rate as the logos
+      bgRect.x = (i * 1280) - (int)scrollOffset;
+      bgRect.y = 0;
 
-    SDL_Rect logoRect;
-    float scale =
-        0.5f; // Adjust this to make the logo bigger or smaller (0.5 = 50% size)
+      // Only draw background if it's visible
+      if (bgRect.x + bgRect.w > 0 && bgRect.x < 1280) {
+        SDL_RenderCopy(renderer, games[i].bg, NULL, &bgRect);
 
-    logoRect.w = (int)(imgW * scale);
-    logoRect.h = (int)(imgH * scale);
+        // OPTIONAL: Add a dark dimming effect so the logo stands out
+        // Comment these 3 lines out if you want the BG at full brightness
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 100); // 100/255 darkness
+        SDL_RenderFillRect(renderer, &bgRect);
+      }
+    }
+    // 3. Draw ALL games relative to the scroll
+    for (int i = 0; i < 3; i++) {
+      SDL_Rect logoRect;
+      float scale = 0.5f;
+      logoRect.w = (int)(games[i].logoWidth * scale);
+      logoRect.h = (int)(games[i].logoHeight * scale);
 
-    // Center it on your 1280x720 logical screen
-    logoRect.x = (1280 - logoRect.w) / 2;
-    logoRect.y = 50;
+      // X Position calculation:
+      // (i * 1280) puts them in a line.
+      // - scrollOffset moves the whole "line" left or right.
+      // + (1280 - logoRect.w)/2 centers the individual logo in its slot.
+      logoRect.x = (i * 1280) - (int)scrollOffset + (1280 - logoRect.w) / 2;
+      logoRect.y = (720 - logoRect.h) / 2;
 
-    SDL_RenderCopy(renderer, png, NULL, &logoRect);
+      // Only draw if it's actually on screen (optimization)
+      if (logoRect.x + logoRect.w > 0 && logoRect.x < 1280) {
+        SDL_RenderCopy(renderer, games[i].logo, NULL, &logoRect);
+      }
+    }
     SDL_RenderPresent(renderer);
 
     while (SDL_PollEvent(&event)) {
@@ -86,6 +146,25 @@ int main(int argc, char *argv[]) {
             event.key.keysym.sym == SDLK_LEFT ||
             event.key.keysym.sym == SDLK_RIGHT) {
           printf("%s key was pressed.\n", keyName);
+          if (event.key.keysym.sym == SDLK_RIGHT) {
+            if (activeGame < 2) {
+              activeGame++;
+              targetScrollOffset += 1280.0f;
+            }
+          }
+          if (event.key.keysym.sym == SDLK_LEFT) {
+            if (activeGame != 0) {
+              activeGame--;
+              targetScrollOffset -= 1280.0f;
+            }
+          }
+          if (event.key.keysym.sym == SDLK_x) {
+            char command[1024];
+            sprintf(command, "open \"%s\"", games[activeGame].installDir);
+            printf("Launching %s...\n", games[activeGame].installDir);
+            system(command);
+            isRunning = false;
+          }
         }
         break;
       case SDL_QUIT:
@@ -93,6 +172,7 @@ int main(int argc, char *argv[]) {
         break;
       }
     }
+    SDL_Delay(16);
   }
 
   SDL_DestroyWindow(window);
