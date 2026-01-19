@@ -5,12 +5,18 @@ project(Lifeboat)
 
 add_executable(lifeboat src/main.c)
 
+# Add Homebrew paths for Mac
+include_directories(/opt/homebrew/include)
+link_directories(/opt/homebrew/lib)
+
 find_package(SDL2 REQUIRED COMPONENTS SDL2)
 find_package(SDL2_image REQUIRED)
+find_package(SDL2_mixer REQUIRED)
 
 target_link_libraries(lifeboat PRIVATE
 SDL2::SDL2
 SDL2_image::SDL2_image
+SDL2_mixer::SDL2_mixer
 )
 
 add_custom_command(TARGET lifeboat POST_BUILD

@@ -5,8 +5,10 @@
 #include <SDL2/SDL_surface.h>
 #include <SDL2/SDL_video.h>
 #include <SDL2_image/SDL_image.h>
+#include <SDL2_mixer/SDL_mixer.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <unistd.h>
 
 float scrollOffset = 0.0f;       // Where we are currently looking
 float targetScrollOffset = 0.0f; // Where we WANT to be (0, 1280, 2560...)
@@ -16,23 +18,24 @@ enum GameEnum { OOT, MM, MK };
 
 struct game {
   enum GameEnum game;
-  char logoDir[48];
-  char bgDir[48];
-  char installDir[48];
-  char romDir[48];
+  char logoDir[48], bgDir[48], installDir[48], romDir[48];
   int logoWidth, logoHeight;
   SDL_Texture *logo;
   SDL_Texture *bg;
+  char musicDir[48], effectDir[48];
 };
 
 struct game games[3] = {
     {OOT, "../public/images/oot_logo.png",
      "../public/images/oot_bg_vignette.png", "/Applications/soh.app/", "Empty",
-     0, 0, 0, 0},
+     0, 0, 0, 0, "../public/audio/oot_theme.wav",
+     "../public/audio/ganon_laugh.wav"},
     {MM, "../public/images/mm_logo.png", "../public/images/mm_bg.png",
-     "/Applications/2s2h.app/", "Empty", 0, 0, 0, 0},
+     "/Applications/2s2h.app/", "Empty", 0, 0, 0, 0,
+     "../public/audio/majoras_theme.wav", "../public/audio/majora_laugh.wav"},
     {MK, "../public/images/mario_kart.png",
-     "../public/images/oot_bg_vignette.png", "Empty", "Empty", 0, 0, 0, 0}};
+     "../public/images/oot_bg_vignette.png", "Empty", "Empty", 0, 0, 0, 0,
+     "../public/audio/oot_theme.wav", "../public/audio/ganon_laugh.wav"}};
 
 int main(int argc, char *argv[]) {
 
@@ -49,6 +52,41 @@ int main(int argc, char *argv[]) {
     return 1;
   } else {
     printf("SDL is initialized!\n");
+  }
+
+  // start SDL with audio support
+  if (SDL_Init(SDL_INIT_AUDIO) == -1) {
+    printf("SDL_Init: %s\n", SDL_GetError());
+    exit(1);
+  } else if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024) == -1) {
+    printf("Mix_OpenAudio: %s\n", Mix_GetError());
+    exit(2);
+  } else {
+    printf("SDL Audio successfully initialized.");
+  }
+
+  Mix_AllocateChannels(6);
+  Mix_Chunk *songs[3];
+  for (int i = 0; i < 3; i++) {
+    // load sample.wav in to sample
+    songs[i] = Mix_LoadWAV(games[i].musicDir);
+    if (!songs[i]) {
+      printf("Mix_LoadWAV: %s\n", Mix_GetError());
+      // handle error
+    }
+  }
+  Mix_Chunk *effects[3];
+  for (int i = 0; i < 3; i++) {
+    // load sample.wav in to sample
+    effects[i] = Mix_LoadWAV(games[i].effectDir);
+    if (!effects[i]) {
+      printf("Mix_LoadWAV: %s\n", Mix_GetError());
+      // handle error
+    }
+  }
+
+  if (Mix_PlayChannel(0, songs[0], 0) == -1) {
+    printf("Mix_PlayChannel: %s\n", Mix_GetError());
   }
 
   SDL_Renderer *renderer =
@@ -150,15 +188,29 @@ int main(int argc, char *argv[]) {
             if (activeGame < 2) {
               activeGame++;
               targetScrollOffset += 1280.0f;
+              Mix_HaltChannel(-1);
+              if (Mix_PlayChannel(activeGame, songs[activeGame], 0) == -1) {
+                printf("Mix_PlayChannel: %s\n", Mix_GetError());
+              }
             }
           }
           if (event.key.keysym.sym == SDLK_LEFT) {
             if (activeGame != 0) {
               activeGame--;
               targetScrollOffset -= 1280.0f;
+              Mix_HaltChannel(-1);
+              if (Mix_PlayChannel(activeGame, songs[activeGame], 0) == -1) {
+                printf("Mix_PlayChannel: %s\n", Mix_GetError());
+              }
             }
           }
           if (event.key.keysym.sym == SDLK_x) {
+
+            Mix_HaltChannel(-1);
+            if (Mix_PlayChannel(activeGame + 4, effects[activeGame], 0) == -1) {
+              printf("Mix_PlayChannel: %s\n", Mix_GetError());
+            }
+            sleep(2);
             char command[1024];
             sprintf(command, "open \"%s\"", games[activeGame].installDir);
             printf("Launching %s...\n", games[activeGame].installDir);
